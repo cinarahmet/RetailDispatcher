@@ -47,19 +47,19 @@ namespace Dispatching.Reader
                 {
                     var line = s.Split(',');
 
-                    var inventoryID = "ALL";
-                    var cargoID = line[0];
-                    var capacity = Convert.ToDouble(line[1], CultureInfo.InvariantCulture);
+                    var inventoryID = line[0];
+                    var cargoID = line[1];
+                    var capacity = Convert.ToDouble(line[2], CultureInfo.InvariantCulture);
 
-                    var globalMinRatio = Convert.ToDouble(line[2], CultureInfo.InvariantCulture);
-                    var minForTownGroupA = Convert.ToDouble(line[3], CultureInfo.InvariantCulture);
-                    var minForTownGroupB = Convert.ToDouble(line[4], CultureInfo.InvariantCulture);
-                    var minForTownGroupC = Convert.ToDouble(line[5], CultureInfo.InvariantCulture);
+                    var globalMinRatio = Convert.ToDouble(line[3], CultureInfo.InvariantCulture);
+                    var minForTownGroupA = Convert.ToDouble(line[4], CultureInfo.InvariantCulture);
+                    var minForTownGroupB = Convert.ToDouble(line[5], CultureInfo.InvariantCulture);
+                    var minForTownGroupC = Convert.ToDouble(line[6], CultureInfo.InvariantCulture);
 
-                    var globalMaxRatio = Convert.ToDouble(line[6], CultureInfo.InvariantCulture);
-                    var maxForTownGroupA = Convert.ToDouble(line[7], CultureInfo.InvariantCulture);
-                    var maxForTownGroupB = Convert.ToDouble(line[8], CultureInfo.InvariantCulture);
-                    var maxForTownGroupC = Convert.ToDouble(line[9], CultureInfo.InvariantCulture);
+                    var globalMaxRatio = Convert.ToDouble(line[7], CultureInfo.InvariantCulture);
+                    var maxForTownGroupA = Convert.ToDouble(line[8], CultureInfo.InvariantCulture);
+                    var maxForTownGroupB = Convert.ToDouble(line[9], CultureInfo.InvariantCulture);
+                    var maxForTownGroupC = Convert.ToDouble(line[10], CultureInfo.InvariantCulture);
 
                     if (CargosByInventories.ContainsKey(inventoryID))
                     {
@@ -109,7 +109,7 @@ namespace Dispatching.Reader
                 var length = headerLine.Count();
                 var listOfCargos = new List<String>();
 
-                for (int i = 4; i < length; i++)
+                for (int i = 5; i < length; i++)
                 {
                     listOfCargos.Add(headerLine[i]);
                 }
@@ -118,24 +118,17 @@ namespace Dispatching.Reader
                 {
                     var line = s.Split(',');
 
-                    var inventoryID = "ALL";
-                    var cityID = line[0];
-                    var townID = line[1];
-                    var townGroup = line[2];
-                    var demand = Convert.ToDouble(line[3], CultureInfo.InvariantCulture);
+                    var inventoryID = line[0];
+                    var cityID = line[1];
+                    var townID = line[2];
+                    var townGroup = line[3];
+                    var demand = Convert.ToDouble(line[4], CultureInfo.InvariantCulture);
 
                     var listOfNps = new List<Double>();
-                    for (int i = 4; i < length; i++)
+                    for (int i = 5; i < length; i++)
                     {
                         listOfNps.Add(Convert.ToDouble(line[i], CultureInfo.InvariantCulture));
                     }
-
-                    var sameDayCapacity = 10000000.0;
-                    var carryOverCapacity = 10000000.0;
-
-                    var sameDayDeliveryCost = 0.0;
-                    var carryOverCost = 0.0;
-                    var nonDeliveryCost = 0.0;
                     
                     var inventoryIsContained = TownByInventories.ContainsKey(inventoryID);
 
@@ -152,9 +145,6 @@ namespace Dispatching.Reader
                             var nps = listOfNps[i];
 
                             var cargo = CargosByInventories[inventoryID].Find(x => x.GetID() == cargoID);
-
-                            town.AddCargoCapacity(cargo, sameDayCapacity, carryOverCapacity);
-                            town.AddCargoCost(cargo, sameDayDeliveryCost, carryOverCost, nonDeliveryCost);
                             town.AddNPS(cargo, nps);
                         }
 
@@ -171,8 +161,6 @@ namespace Dispatching.Reader
 
                             var cargo = CargosByInventories[inventoryID].Find(x => x.GetID() == cargoID);
 
-                            town.AddCargoCapacity(cargo, sameDayCapacity, carryOverCapacity);
-                            town.AddCargoCost(cargo, sameDayDeliveryCost, carryOverCost, nonDeliveryCost);
                             town.AddNPS(cargo, nps);
                         }
 
