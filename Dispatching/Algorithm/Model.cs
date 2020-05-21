@@ -224,8 +224,8 @@ namespace Dispatching.Algorithm
                 ratios.Add(x_i / _orderAmount);
             }
 
-            var globalOutput = new OutputModel(ratios, "TURKEY", "ALL", cargoNames);
-            _output.Add(globalOutput);
+            //var globalOutput = new OutputModel(ratios, "TURKEY", "ALL", cargoNames);
+            //_output.Add(globalOutput);
             
             for (int d = 0; d < _numOfDepots; d++)
             {
@@ -257,8 +257,7 @@ namespace Dispatching.Algorithm
         /// <summary>
         /// Create decision variables for the underlying mathematical model
         /// a[i]    € N: TotalOrderDeliveredByCargo
-        /// x[d][i][k] € N: SameDayDelivery
-        /// y[d][i][k] € N: CarryOver
+        /// x[d][i][k] € N: _deliveryAmount
         /// z[d][i][k] € N: _excessAmount
         /// </summary>
         private void CreateDecisionVariables()
@@ -266,7 +265,7 @@ namespace Dispatching.Algorithm
             // TotalOrderDeliveredByCargo variables
             for (int i = 0; i < _numOfCargos; i++)
             {
-                var name = String.Format("a[{0}]", (i + 1));
+                var name = $"a[{(i + 1)}]";
                 var ub = _orderAmount;
 
                 var a_i = _solver.MakeIntVar(0, ub, name);
@@ -288,7 +287,7 @@ namespace Dispatching.Algorithm
 
                     for(int k=0; k < _numOfTowns; k++)
                     {
-                        var name = String.Format("x[{0}][{1}{2}]", (i + 1), (k + 1), (d + 1));
+                        var name = $"x[{(i + 1)}][{(k + 1)}{(d + 1)}]";
                         var town = towns[k];
                         var ub = town.GetSameDayCapacity(cargo);
                         var x_dik = _solver.MakeIntVar(0, ub, name);
@@ -316,7 +315,7 @@ namespace Dispatching.Algorithm
 
                     for (int k = 0; k < _numOfTowns; k++)
                     {
-                        var name = String.Format("z[{0}][{1}{2}]", (i + 1), (k + 1), (d + 1));
+                        var name = $"z[{(i + 1)}][{(k + 1)}{(d + 1)}]";
                         var town = towns[k];
                         var ub = Int32.MaxValue;
                         var z_dik = _solver.MakeIntVar(0, ub, name);
@@ -467,7 +466,7 @@ namespace Dispatching.Algorithm
             for (int i = 0; i < _numOfCargos; i++)
             {
                 var ratio = cargos[i].GetMinimumRatio();
-                var constraint = _solver.MakeConstraint(_orderAmount * ratio, Double.PositiveInfinity);
+                var constraint = _solver.MakeConstraint(_orderAmount * ratio, double.PositiveInfinity);
                 constraint.SetCoefficient(_totalOrderDeliveredByCargo[i], 1);
             }
         }
@@ -513,7 +512,7 @@ namespace Dispatching.Algorithm
                     }
                     
 
-                    var constraint = _solver.MakeConstraint(demand * ratio, Double.PositiveInfinity);
+                    var constraint = _solver.MakeConstraint(demand * ratio, double.PositiveInfinity);
                     for (int d = 0; d < _numOfDepots; d++)
                     {
                         constraint.SetCoefficient(_deliveryAmount[d][i][k], 1);
@@ -526,7 +525,7 @@ namespace Dispatching.Algorithm
         /// <summary>
         /// The amount orders assigned to each cargo in a town must be less than
         /// a certain percentage
-        /// sum(d) x[d][i][k] + y[d][i][k] + z[d][i][k] LE Demand[d][k] * ratio[i] for all i € N; k € K
+        /// sum(d) x[d][i][k] + y[d][i][k] + z[d][i][k] le Demand[d][k] * ratio[i] for all i € N; k € K
         /// </summary>
         private void MaximumRatioLimitForEachCargoInTown()
         {
@@ -562,7 +561,7 @@ namespace Dispatching.Algorithm
         }
 
         /// <summary>
-        /// sum(k) x[d][i][k] + y[d][i][k] + z[d][i][k] <= Capacity[d][k] for all d € D; k € K
+        /// sum(k) x[d][i][k] + y[d][i][k] + z[d][i][k] le Capacity[d][k] for all d € D; k € K
         /// </summary>
         private void CargoCapacitiesByInventories()
         {

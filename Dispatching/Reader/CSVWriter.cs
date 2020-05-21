@@ -24,10 +24,10 @@ namespace Dispatching.Reader
             Cargos = cargos;
             InventoryName = fileName;
 
-            var header = "Location";
+            var header = "City, Town";
             foreach (var cargo in Cargos)
             {
-                header = String.Format("{0},{1}", header, cargo.GetID());
+                header = $"{header},{cargo.GetID()}";
             }
 
             FilePath = @"Output\" + fileName + ".csv";
@@ -42,14 +42,16 @@ namespace Dispatching.Reader
             foreach (var data in Data)
             {
                 var town = data.TownID;
+                var cityId = town.Split('~')[0];
+                var townId = town.Split('~')[1];
                 var cargos = data.Cargos;
                 var ratios = data.Ratios;
 
-                var result = String.Format("{0}", town);
+                var result = $"{cityId},{townId}";
                 foreach (var cargo in Cargos)
                 {
                     var id = cargo.GetID();
-                    result = String.Format("{0},{1}", result, ratios[cargos.IndexOf(id)]);
+                    result = $"{result},{ratios[cargos.IndexOf(id)]}";
                 }
 
                 w.WriteLine(result);
