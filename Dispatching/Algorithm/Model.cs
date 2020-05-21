@@ -14,39 +14,34 @@ namespace Dispatching.Algorithm
         /// ORTools to provide a solution within an allowable run time, then
         /// we may switch to commercial solvers such as CPLEX, GUROBI, XPress
         /// </summary>
-        private Solver Solver;
+        private Solver _solver;
 
         /// <summary>
         /// a[i] € N: Total amount of order assigned to cargo i 
         /// </summary>
-        private List<Variable> TotalOrderDeliveredByCargo;
+        private List<Variable> _totalOrderDeliveredByCargo;
 
         /// <summary>
         /// x[d][i][k] € N: Amount of orders delivered to town k by cargo firm i from depot d
         /// during the same day
         /// </summary>
-        private List<List<List<Variable>>> SameDayDelivery;
+        private List<List<List<Variable>>> _deliveryAmount;
 
-        /// <summary>
-        /// y[i][k] € N: Amount of orders not delivered the same day but carried
-        /// over to town k by cargo firm i from depot d
-        /// </summary>
-        private List<List<List<Variable>>> CarryOver;
 
         /// <summary>
         /// z[i][k] € N: Amount of orders not delivered to town k by cargo firm i from depot d
         /// </summary>
-        private List<List<List<Variable>>> NonDelivery;
+        private List<List<List<Variable>>> _excessAmount;
 
         /// <summary>
         /// List of towns by inventories
         /// </summary>
-        private Dictionary<String, List<Town>> InventoryTowns;
+        private Dictionary<String, List<Town>> _inventoryTowns;
 
         /// <summary>
         /// List of cargos by inventories
         /// </summary>
-        private Dictionary<String, List<Cargo>> InventoryCargos;
+        private Dictionary<String, List<Cargo>> _inventoryCargos;
 
         /// <summary>
         /// Cost charged for exceeding the capacity
@@ -56,48 +51,48 @@ namespace Dispatching.Algorithm
         /// <summary>
         /// List of depots
         /// </summary>
-        private List<Depot> Depots;
+        private List<Depot> _depots;
 
         /// <summary>
         /// Total amount of orders, achieved by summing over the 
         /// demands for each town
         /// </summary>
-        private Double OrderAmount;
+        private Double _orderAmount;
 
         /// <summary>
         /// Number of cargos
         /// </summary>
-        private Int32 NumOfCargos;
+        private Int32 _numOfCargos;
 
         /// <summary>
         /// Number of towns
         /// </summary>
-        private Int32 NumOfTowns;
+        private Int32 _numOfTowns;
 
         /// <summary>
         /// Number of depots
         /// </summary>
-        private Int32 NumOfDepots;
+        private Int32 _numOfDepots;
 
         /// <summary>
         /// Total cost in terms of actual TL based on NPS values
         /// </summary>
-        private Double TotalCost;
+        private Double _totalCost;
 
         /// <summary>
         /// Objective function
         /// </summary>
-        private Objective Objective;
+        private Objective _objective;
 
         /// <summary>
         /// Output model
         /// </summary>
-        private List<OutputModel> Output;
+        private List<OutputModel> _output;
 
         /// <summary>
         /// Solution status
         /// </summary>
-        private Int32 Status;
+        private Int32 _status;
         
         /// <summary>
         /// Construction
@@ -107,29 +102,28 @@ namespace Dispatching.Algorithm
         /// <param name="depots"></param>
         public Model(Dictionary<String, List<Town>> invTowns, Dictionary<String, List<Cargo>> invCargos, List<Depot> depots)
         {
-            Solver = Solver.CreateSolver("Dispatcher", "CBC_MIXED_INTEGER_PROGRAMMING");
-            Objective = Solver.Objective();
+            _solver = Solver.CreateSolver("Dispatcher", "CBC_MIXED_INTEGER_PROGRAMMING");
+            _objective = _solver.Objective();
 
-            TotalOrderDeliveredByCargo = new List<Variable>();
-            SameDayDelivery = new List<List<List<Variable>>>();
-            CarryOver = new List<List<List<Variable>>>();
-            NonDelivery = new List<List<List<Variable>>>();
+            _totalOrderDeliveredByCargo = new List<Variable>();
+            _deliveryAmount = new List<List<List<Variable>>>();
+            _excessAmount = new List<List<List<Variable>>>();
 
-            InventoryTowns = invTowns;
-            InventoryCargos = invCargos;
-            Depots = depots;
+            _inventoryTowns = invTowns;
+            _inventoryCargos = invCargos;
+            _depots = depots;
 
-            NumOfDepots = InventoryTowns.Keys.Count;
-            NumOfTowns = InventoryTowns[InventoryTowns.Keys.ToList()[0]].Count;
-            NumOfCargos = InventoryCargos[InventoryCargos.Keys.ToList()[0]].Count;
+            _numOfDepots = _inventoryTowns.Keys.Count;
+            _numOfTowns = _inventoryTowns[_inventoryTowns.Keys.ToList()[0]].Count;
+            _numOfCargos = _inventoryCargos[_inventoryCargos.Keys.ToList()[0]].Count;
 
-            foreach(var invTownPair in InventoryTowns)
+            foreach(var invTownPair in _inventoryTowns)
             {
                 var towns = invTownPair.Value;
-                OrderAmount += towns.Sum(x => x.GetDemand());
+                _orderAmount += towns.Sum(x => x.GetDemand());
             }
 
-            Output = new List<OutputModel>();
+            _output = new List<OutputModel>();
         }
 
         /// <summary>
@@ -152,7 +146,7 @@ namespace Dispatching.Algorithm
         /// <returns></returns>
         public List<OutputModel> GetOutput()
         {
-            return Output;
+            return _output;
         }
 
         /// <summary>
@@ -163,36 +157,36 @@ namespace Dispatching.Algorithm
             var ratios = new List<Double>();
             var cargoNames = new List<String>();
 
-            var Cargos = InventoryCargos[Depots[0].GetDepotID()];
-            var Towns = InventoryTowns[Depots[0].GetDepotID()];
+            var Cargos = _inventoryCargos[_depots[0].GetDepotID()];
+            var Towns = _inventoryTowns[_depots[0].GetDepotID()];
             CalculateCost();
 
-            Console.WriteLine("Total Order Quantity: {0}", OrderAmount);
-            Console.WriteLine("Objective Value: {0}", Math.Round(Solver.Objective().Value(), 2));
-            Console.WriteLine("Total Cost: {0} TL", Math.Round(TotalCost, 2));
-            Console.WriteLine("Solution Time: {0} milliseconds\n ", Solver.WallTime());
-            for (int i = 0; i < NumOfCargos; i++)
+            Console.WriteLine("Total Order Quantity: {0}", _orderAmount);
+            Console.WriteLine("Objective Value: {0}", Math.Round(_solver.Objective().Value(), 2));
+            Console.WriteLine("Total Cost: {0} TL", Math.Round(_totalCost, 2));
+            Console.WriteLine("Solution Time: {0} milliseconds\n ", _solver.WallTime());
+            for (int i = 0; i < _numOfCargos; i++)
             {
                 cargoNames.Add(Cargos[i].GetID());
-                var x_i = TotalOrderDeliveredByCargo[i].SolutionValue();
-                ratios.Add(x_i / OrderAmount);
-                Console.WriteLine("r[{0}] = {1}\t x[{0}] = {2}", Cargos[i].GetID(), Math.Round(ratios[i], 3), TotalOrderDeliveredByCargo[i].SolutionValue());
+                var x_i = _totalOrderDeliveredByCargo[i].SolutionValue();
+                ratios.Add(x_i / _orderAmount);
+                Console.WriteLine("r[{0}] = {1}\t x[{0}] = {2}", Cargos[i].GetID(), Math.Round(ratios[i], 3), _totalOrderDeliveredByCargo[i].SolutionValue());
             }
 
         }
 
         private Double CalculateCost()
         {
-            for (int d = 0; d < NumOfDepots; d++)
+            for (int d = 0; d < _numOfDepots; d++)
             {
-                var depot = Depots[d];
+                var depot = _depots[d];
 
-                var cargos = InventoryCargos[depot.GetDepotID()];
-                var towns = InventoryTowns[depot.GetDepotID()];
+                var cargos = _inventoryCargos[depot.GetDepotID()];
+                var towns = _inventoryTowns[depot.GetDepotID()];
 
-                for (int i = 0; i < NumOfCargos; i++)
+                for (int i = 0; i < _numOfCargos; i++)
                 {
-                    for (int k = 0; k < NumOfTowns; k++)
+                    for (int k = 0; k < _numOfTowns; k++)
                     {
                         var town = towns[k];
                         var cargo = cargos[i];
@@ -201,15 +195,15 @@ namespace Dispatching.Algorithm
                         var nonDeliveryCost = town.GetNonDeliveryCost(cargo);
                         var nps = town.GetNPS(cargo);
 
-                        var sameDay = SameDayDelivery[d][i][k].SolutionValue();
-                        var nonDelivery = NonDelivery[d][i][k].SolutionValue();
+                        var sameDay = _deliveryAmount[d][i][k].SolutionValue();
+                        var nonDelivery = _excessAmount[d][i][k].SolutionValue();
 
-                        TotalCost += (sameDay * (sameDayCost + nps)) + (nonDelivery * (nonDeliveryCost + nps));
+                        _totalCost += (sameDay * (sameDayCost + nps)) + (nonDelivery * (nonDeliveryCost + nps));
                     }
                 }
             }
 
-            return TotalCost;
+            return _totalCost;
         }
 
         /// <summary>
@@ -220,69 +214,42 @@ namespace Dispatching.Algorithm
             var ratios = new List<Double>();
             var cargoNames = new List<String>();
 
-            var Cargos = InventoryCargos[Depots[0].GetDepotID()];
-            var Towns = InventoryTowns[Depots[0].GetDepotID()];
+            var Cargos = _inventoryCargos[_depots[0].GetDepotID()];
+            var Towns = _inventoryTowns[_depots[0].GetDepotID()];
 
-            for (int i = 0; i < NumOfCargos; i++)
+            for (int i = 0; i < _numOfCargos; i++)
             {
                 cargoNames.Add(Cargos[i].GetID());
-                var x_i = TotalOrderDeliveredByCargo[i].SolutionValue();
-                ratios.Add(x_i / OrderAmount);
+                var x_i = _totalOrderDeliveredByCargo[i].SolutionValue();
+                ratios.Add(x_i / _orderAmount);
             }
 
             var globalOutput = new OutputModel(ratios, "TURKEY", "ALL", cargoNames);
-            Output.Add(globalOutput);
-
-            //for (int d = 0; d < NumOfDepots; d++)
-            //{
-            //    var depot = Depots[d];
-            //    var towns = InventoryTowns[depot.GetDepotID()];
-            //    var demand = towns.Sum(town => town.GetDemand());
-
-            //    var dRatios = new List<Double>();
-
-            //    for (int i = 0; i < NumOfCargos; i++)
-            //    {
-            //        var assigned = 0.0;
-            //        for (int k = 0; k < NumOfTowns; k++)
-            //        {
-            //            assigned += SameDayDelivery[d][i][k].SolutionValue();
-            //            assigned += CarryOver[d][i][k].SolutionValue();
-            //            assigned += NonDelivery[d][i][k].SolutionValue();
-            //        }
-
-            //        dRatios.Add(assigned / demand);
-            //    }
-
-            //    var outputModel = new OutputModel(dRatios, depot.GetDepotID(), depot.GetDepotID(), cargoNames);
-            //    Output.Add(outputModel);
-            //}
-
-
-            for (int d = 0; d < NumOfDepots; d++)
+            _output.Add(globalOutput);
+            
+            for (int d = 0; d < _numOfDepots; d++)
             {
-                Towns = InventoryTowns[Depots[d].GetDepotID()];
-                Cargos = InventoryCargos[Depots[d].GetDepotID()];
+                Towns = _inventoryTowns[_depots[d].GetDepotID()];
+                Cargos = _inventoryCargos[_depots[d].GetDepotID()];
 
-                for (int k = 0; k < NumOfTowns; k++)
+                for (int k = 0; k < _numOfTowns; k++)
                 {
                     var town = Towns[k].GetID();
                     var cargoRatios = new List<Double>();
                     var cargos = new List<String>();
 
-                    for (int i = 0; i < NumOfCargos; i++)
+                    for (int i = 0; i < _numOfCargos; i++)
                     {
-                        var sd = SameDayDelivery[d][i][k].SolutionValue();
-                        var co = CarryOver[d][i][k].SolutionValue();
-                        var nd = NonDelivery[d][i][k].SolutionValue();
+                        var sd = _deliveryAmount[d][i][k].SolutionValue();
+                        var nd = _excessAmount[d][i][k].SolutionValue();
 
-                        //var ratio = (sd + co + nd) / Towns[k].GetDemand();
-                        var ratio = (sd + co + nd);
+                        //var ratio = (sd + nd) / Towns[k].GetDemand();
+                        var ratio = (sd +  nd);
                         cargoRatios.Add(ratio);
                         cargos.Add(Cargos[i].GetID());
                     }
-                    var outputModel = new OutputModel(cargoRatios, Towns[k].GetID(), Depots[d].GetDepotID(), cargos);
-                    Output.Add(outputModel);
+                    var outputModel = new OutputModel(cargoRatios, Towns[k].GetID(), _depots[d].GetDepotID(), cargos);
+                    _output.Add(outputModel);
                 }
             }
         }
@@ -292,99 +259,73 @@ namespace Dispatching.Algorithm
         /// a[i]    € N: TotalOrderDeliveredByCargo
         /// x[d][i][k] € N: SameDayDelivery
         /// y[d][i][k] € N: CarryOver
-        /// z[d][i][k] € N: NonDelivery
+        /// z[d][i][k] € N: _excessAmount
         /// </summary>
         private void CreateDecisionVariables()
         {
             // TotalOrderDeliveredByCargo variables
-            for (int i = 0; i < NumOfCargos; i++)
+            for (int i = 0; i < _numOfCargos; i++)
             {
                 var name = String.Format("a[{0}]", (i + 1));
-                var ub = OrderAmount;
+                var ub = _orderAmount;
 
-                var a_i = Solver.MakeIntVar(0, ub, name);
-                TotalOrderDeliveredByCargo.Add(a_i);
+                var a_i = _solver.MakeIntVar(0, ub, name);
+                _totalOrderDeliveredByCargo.Add(a_i);
             }
 
-            // SameDayDelivery variables
-            for(int d=0; d < NumOfDepots; d++)
+            // _deliveryAmount variables
+            for(int d=0; d < _numOfDepots; d++)
             {
                 var x_d = new List<List<Variable>>();
-                var depot = Depots[d];
-                var cargos = InventoryCargos[depot.GetDepotID()];
-                var towns = InventoryTowns[depot.GetDepotID()];
+                var depot = _depots[d];
+                var cargos = _inventoryCargos[depot.GetDepotID()];
+                var towns = _inventoryTowns[depot.GetDepotID()];
 
-                for(int i=0; i < NumOfCargos; i++)
+                for(int i=0; i < _numOfCargos; i++)
                 {
                     var x_di = new List<Variable>();
                     var cargo = cargos[i];
 
-                    for(int k=0; k < NumOfTowns; k++)
+                    for(int k=0; k < _numOfTowns; k++)
                     {
                         var name = String.Format("x[{0}][{1}{2}]", (i + 1), (k + 1), (d + 1));
                         var town = towns[k];
                         var ub = town.GetSameDayCapacity(cargo);
-                        var x_dik = Solver.MakeIntVar(0, ub, name);
+                        var x_dik = _solver.MakeIntVar(0, ub, name);
 
                         x_di.Add(x_dik);
                     }
                     x_d.Add(x_di);
                 }
-                SameDayDelivery.Add(x_d);
+                _deliveryAmount.Add(x_d);
             }
+            
 
-            // CarryOver variables
-            for (int d = 0; d < NumOfDepots; d++)
-            {
-                var y_d = new List<List<Variable>>();
-                var depot = Depots[d];
-                var cargos = InventoryCargos[depot.GetDepotID()];
-                var towns = InventoryTowns[depot.GetDepotID()];
-
-                for (int i = 0; i < NumOfCargos; i++)
-                {
-                    var y_di = new List<Variable>();
-                    var cargo = cargos[i];
-
-                    for (int k = 0; k < NumOfTowns; k++)
-                    {
-                        var name = String.Format("y[{0}][{1}{2}]", (i + 1), (k + 1), (d + 1));
-                        var town = towns[k];
-                        var ub = town.GetCarryOverCapacity(cargo);
-                        var y_dik = Solver.MakeIntVar(0, ub, name);
-
-                        y_di.Add(y_dik);
-                    }
-                    y_d.Add(y_di);
-                }
-                CarryOver.Add(y_d);
-            }
-
-            // NonDelivery variables
-            for (int d = 0; d < NumOfDepots; d++)
+            // _excessAmount variables
+            for (int d = 0; d < _numOfDepots; d++)
             {
                 var z_d = new List<List<Variable>>();
-                var depot = Depots[d];
-                var cargos = InventoryCargos[depot.GetDepotID()];
-                var towns = InventoryTowns[depot.GetDepotID()];
+                var depot = _depots[d];
+                var cargos = _inventoryCargos[depot.GetDepotID()];
+                var towns = _inventoryTowns[depot.GetDepotID()];
 
-                for (int i = 0; i < NumOfCargos; i++)
+                for (int i = 0; i < _numOfCargos; i++)
                 {
                     var z_di = new List<Variable>();
                     var cargo = cargos[i];
 
-                    for (int k = 0; k < NumOfTowns; k++)
+                    for (int k = 0; k < _numOfTowns; k++)
                     {
                         var name = String.Format("z[{0}][{1}{2}]", (i + 1), (k + 1), (d + 1));
                         var town = towns[k];
                         var ub = Int32.MaxValue;
-                        var z_dik = Solver.MakeIntVar(0, ub, name);
+                        var z_dik = _solver.MakeIntVar(0, ub, name);
 
                         z_di.Add(z_dik);
                     }
                     z_d.Add(z_di);
                 }
-                NonDelivery.Add(z_d);
+                _excessAmount.Add(z_d);
             }
         }
 
@@ -394,36 +335,32 @@ namespace Dispatching.Algorithm
         /// where objective sense is minimization and the costs are:
         /// SDC[d][i][k]: SameDay cost for cargo i in town k
         /// COC[d][i][k]: CarryOver cost for cargo i in town k
-        /// NDC[d][i][k]: NonDelivery cost for cargo i in town k
+        /// NDC[d][i][k]: _excessAmount cost for cargo i in town k
         /// </summary>
         private void CreateObjective()
         {
-            for(int d=0; d < NumOfDepots; d++)
+            for(int d=0; d < _numOfDepots; d++)
             {
-                var depot = Depots[d];
+                var depot = _depots[d];
 
-                var cargos = InventoryCargos[depot.GetDepotID()];
-                var towns = InventoryTowns[depot.GetDepotID()];
+                var cargos = _inventoryCargos[depot.GetDepotID()];
+                var towns = _inventoryTowns[depot.GetDepotID()];
 
-                for(int i = 0; i < NumOfCargos; i++)
+                for(int i = 0; i < _numOfCargos; i++)
                 {
-                    for(int k = 0; k < NumOfTowns; k++)
+                    for(int k = 0; k < _numOfTowns; k++)
                     {
                         var town = towns[k];
                         var cargo = cargos[i];
-
-                        var sameDayCost = town.GetSameDayDeliveryCost(cargo);
-                        var carryOverCost = town.GetCarryOverCost(cargo);
-                        var nonDeliveryCost = town.GetNonDeliveryCost(cargo);
+                        
                         var nps = town.GetNPS(cargo);
 
-                        Objective.SetCoefficient(SameDayDelivery[d][i][k], sameDayCost + nps);
-                        //Objective.SetCoefficient(CarryOver[d][i][k], carryOverCost + nps);
-                        Objective.SetCoefficient(NonDelivery[d][i][k], nonDeliveryCost + ExceedCost);
+                        _objective.SetCoefficient(_deliveryAmount[d][i][k], nps);
+                        _objective.SetCoefficient(_excessAmount[d][i][k], ExceedCost);
                     }
                 }
             }
-            Objective.SetMinimization();
+            _objective.SetMinimization();
         }
 
         /// <summary>
@@ -446,7 +383,7 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void Solve()
         {
-            Status = Solver.Solve();
+            _status = _solver.Solve();
 
             // Status: 0 --> Optimal; 1 --> Feasible; 2 --> Infeasible
             //if(Status == 2)
@@ -464,10 +401,10 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void OrdersAssignedToCargos()
         {
-            var constraint = Solver.MakeConstraint(OrderAmount, OrderAmount);
+            var constraint = _solver.MakeConstraint(_orderAmount, _orderAmount);
 
-            for (int i = 0; i < NumOfCargos; i++)
-                constraint.SetCoefficient(TotalOrderDeliveredByCargo[i], 1);
+            for (int i = 0; i < _numOfCargos; i++)
+                constraint.SetCoefficient(_totalOrderDeliveredByCargo[i], 1);
         }
 
         /// <summary>
@@ -478,21 +415,20 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void OrdersInTowns()
         {
-            for(int d=0; d < NumOfDepots; d++)
+            for(int d=0; d < _numOfDepots; d++)
             {
-                var depot = Depots[d];
-                var towns = InventoryTowns[depot.GetDepotID()];
+                var depot = _depots[d];
+                var towns = _inventoryTowns[depot.GetDepotID()];
 
-                for (int k = 0; k < NumOfTowns; k++)
+                for (int k = 0; k < _numOfTowns; k++)
                 {
                     var demand = towns[k].GetDemand();
-                    var constraint = Solver.MakeConstraint(demand, demand);
+                    var constraint = _solver.MakeConstraint(demand, demand);
 
-                    for (int i = 0; i < NumOfCargos; i++)
+                    for (int i = 0; i < _numOfCargos; i++)
                     {
-                        constraint.SetCoefficient(SameDayDelivery[d][i][k], 1);
-                        //constraint.SetCoefficient(CarryOver[d][i][k], 1);
-                        constraint.SetCoefficient(NonDelivery[d][i][k], 1);
+                        constraint.SetCoefficient(_deliveryAmount[d][i][k], 1);
+                        constraint.SetCoefficient(_excessAmount[d][i][k], 1);
                     }
                 }
             }
@@ -505,19 +441,18 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void OrderMatch()
         {
-            for (int i = 0; i < NumOfCargos; i++)
+            for (int i = 0; i < _numOfCargos; i++)
             {
-                var constraint = Solver.MakeConstraint(0, 0);
-                for (int d = 0; d < NumOfDepots; d++)
+                var constraint = _solver.MakeConstraint(0, 0);
+                for (int d = 0; d < _numOfDepots; d++)
                 {
-                    for (int k = 0; k < NumOfTowns; k++)
+                    for (int k = 0; k < _numOfTowns; k++)
                     {
-                        constraint.SetCoefficient(SameDayDelivery[d][i][k], 1);
-                        //constraint.SetCoefficient(CarryOver[d][i][k], 1);
-                        constraint.SetCoefficient(NonDelivery[d][i][k], 1);
+                        constraint.SetCoefficient(_deliveryAmount[d][i][k], 1);
+                        constraint.SetCoefficient(_excessAmount[d][i][k], 1);
                     }
                 }
-                constraint.SetCoefficient(TotalOrderDeliveredByCargo[i], -1);
+                constraint.SetCoefficient(_totalOrderDeliveredByCargo[i], -1);
             }
         }
 
@@ -528,23 +463,23 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void MinimumRatioLimitForEachCargo()
         {
-            var cargos = InventoryCargos[Depots[0].GetDepotID()];
-            for (int i = 0; i < NumOfCargos; i++)
+            var cargos = _inventoryCargos[_depots[0].GetDepotID()];
+            for (int i = 0; i < _numOfCargos; i++)
             {
                 var ratio = cargos[i].GetMinimumRatio();
-                var constraint = Solver.MakeConstraint(OrderAmount * ratio, Double.PositiveInfinity);
-                constraint.SetCoefficient(TotalOrderDeliveredByCargo[i], 1);
+                var constraint = _solver.MakeConstraint(_orderAmount * ratio, Double.PositiveInfinity);
+                constraint.SetCoefficient(_totalOrderDeliveredByCargo[i], 1);
             }
         }
 
         private void MaximumRatioLimitForEachCargo()
         {
-            var cargos = InventoryCargos[Depots[0].GetDepotID()];
-            for (int i = 0; i < NumOfCargos; i++)
+            var cargos = _inventoryCargos[_depots[0].GetDepotID()];
+            for (int i = 0; i < _numOfCargos; i++)
             {
                 var ratio = cargos[i].GetMaximumRatio();
-                var constraint = Solver.MakeConstraint(0, OrderAmount * ratio);
-                constraint.SetCoefficient(TotalOrderDeliveredByCargo[i], 1);
+                var constraint = _solver.MakeConstraint(0, _orderAmount * ratio);
+                constraint.SetCoefficient(_totalOrderDeliveredByCargo[i], 1);
             }
 
         }
@@ -556,19 +491,19 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void MinimumRatioLimitForEachCargoInTown()
         {
-            for (int i = 0; i < NumOfCargos; i++)
+            for (int i = 0; i < _numOfCargos; i++)
             {
-                for (int k = 0; k < NumOfTowns; k++)
+                for (int k = 0; k < _numOfTowns; k++)
                 {
                     var ratio = 0.0;
                     var demand = 0.0;
 
-                    for (int d = 0; d < NumOfDepots; d++)
+                    for (int d = 0; d < _numOfDepots; d++)
                     {
-                        var depot = Depots[d];
+                        var depot = _depots[d];
 
-                        var towns = InventoryTowns[depot.GetDepotID()];
-                        var cargos = InventoryCargos[depot.GetDepotID()];
+                        var towns = _inventoryTowns[depot.GetDepotID()];
+                        var cargos = _inventoryCargos[depot.GetDepotID()];
 
                         var town = towns[k];
                         var cargo = cargos[i];
@@ -578,12 +513,11 @@ namespace Dispatching.Algorithm
                     }
                     
 
-                    var constraint = Solver.MakeConstraint(demand * ratio, Double.PositiveInfinity);
-                    for (int d = 0; d < NumOfDepots; d++)
+                    var constraint = _solver.MakeConstraint(demand * ratio, Double.PositiveInfinity);
+                    for (int d = 0; d < _numOfDepots; d++)
                     {
-                        constraint.SetCoefficient(SameDayDelivery[d][i][k], 1);
-                        //constraint.SetCoefficient(CarryOver[d][i][k], 1);
-                        constraint.SetCoefficient(NonDelivery[d][i][k], 1);
+                        constraint.SetCoefficient(_deliveryAmount[d][i][k], 1);
+                        constraint.SetCoefficient(_excessAmount[d][i][k], 1);
                     }
                 }
             }
@@ -596,19 +530,19 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void MaximumRatioLimitForEachCargoInTown()
         {
-            for (int i = 0; i < NumOfCargos; i++)
+            for (int i = 0; i < _numOfCargos; i++)
             {
-                for (int k = 0; k < NumOfTowns; k++)
+                for (int k = 0; k < _numOfTowns; k++)
                 {
                     var ratio = 0.0;
                     var demand = 0.0;
 
-                    for (int d = 0; d < NumOfDepots; d++)
+                    for (int d = 0; d < _numOfDepots; d++)
                     {
-                        var depot = Depots[d];
+                        var depot = _depots[d];
 
-                        var towns = InventoryTowns[depot.GetDepotID()];
-                        var cargos = InventoryCargos[depot.GetDepotID()];
+                        var towns = _inventoryTowns[depot.GetDepotID()];
+                        var cargos = _inventoryCargos[depot.GetDepotID()];
 
                         var town = towns[k];
                         var cargo = cargos[i];
@@ -618,12 +552,10 @@ namespace Dispatching.Algorithm
                     }
 
 
-                    var constraint = Solver.MakeConstraint(0, demand * ratio);
-                    for (int d = 0; d < NumOfDepots; d++)
+                    var constraint = _solver.MakeConstraint(0, demand * ratio);
+                    for (int d = 0; d < _numOfDepots; d++)
                     {
-                        constraint.SetCoefficient(SameDayDelivery[d][i][k], 1);
-                        //constraint.SetCoefficient(CarryOver[d][i][k], 1);
-                        //constraint.SetCoefficient(NonDelivery[d][i][k], 1);
+                        constraint.SetCoefficient(_deliveryAmount[d][i][k], 1);
                     }
                 }
             }
@@ -634,83 +566,32 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void CargoCapacitiesByInventories()
         {
-            for(int i=0; i<NumOfCargos; i++)
+            for(int i=0; i<_numOfCargos; i++)
             {
-                for(int d=0; d<NumOfDepots; d++)
+                for(int d=0; d<_numOfDepots; d++)
                 {
-                    var depot = Depots[d];
-                    var cargos = InventoryCargos[depot.GetDepotID()];
+                    var depot = _depots[d];
+                    var cargos = _inventoryCargos[depot.GetDepotID()];
                     var cargo = cargos[i];
 
                     var capacity = cargo.GetCapacity();
-                    var constraint = Solver.MakeConstraint(0, capacity);
+                    var constraint = _solver.MakeConstraint(0, capacity);
 
-                    for(int k=0; k<NumOfTowns; k++)
+                    for(int k=0; k<_numOfTowns; k++)
                     {
-                        constraint.SetCoefficient(SameDayDelivery[d][i][k], 1);
-                        //constraint.SetCoefficient(CarryOver[d][i][k], 1);
-                        //constraint.SetCoefficient(NonDelivery[d][i][k], 1);
+                        constraint.SetCoefficient(_deliveryAmount[d][i][k], 1);
                     }
                 }
             }
         }
-
-        /// <summary>
-        /// Input Data Analyis
-        /// </summary>
-        private void DataAnalysis()
-        {
-            foreach (var depot in Depots)
-            {
-                var cargos = InventoryCargos[depot.GetDepotID()];
-                Console.WriteLine("Depot ID: {0}", depot.GetDepotID());
-
-                foreach (var cargo in cargos)
-                {
-                    Console.WriteLine("Cargo: {0}  \tCapacity: {1}", cargo.GetID(), cargo.GetCapacity());
-                }
-            }
-
-            var towns1 = InventoryTowns[Depots[0].GetDepotID()];
-            var towns2 = InventoryTowns[Depots[1].GetDepotID()];
-            var towns3 = InventoryTowns[Depots[2].GetDepotID()];
-            var minAssigned = 0.0;
-
-            for(int k=0; k<NumOfTowns; k++)
-            {
-                var town = towns1[k];
-                Console.WriteLine("Town: {0} \tD1: {1}  \tD2: {2}  \tD3: {3}   \tMin: {4}", 
-                    (k+1), towns1[k].GetDemand(), towns2[k].GetDemand(), towns3[k].GetDemand(),
-                    (towns1[k].GetDemand() + towns2[k].GetDemand() + towns3[k].GetDemand()) * 0.1);
-
-                minAssigned += (towns1[k].GetDemand() + towns2[k].GetDemand() + towns3[k].GetDemand()) * 0.1;
-            }
-
-            Console.WriteLine("Min assigned: {0}", minAssigned);
-        }
-
-        private void ReRun()
-        {
-            Clear();
-            CreateDecisionVariables();
-            OrdersAssignedToCargos();
-            OrdersInTowns();
-            OrderMatch();
-            //MinimumRatioLimitForEachCargo();
-            MinimumRatioLimitForEachCargoInTown();
-            CargoCapacitiesByInventories();
-            CreateObjective();
-            Solve();
-        }
-
+        
         private void Clear()
         {
-            Solver = Solver.CreateSolver("Dispatcher", "CBC_MIXED_INTEGER_PROGRAMMING");
-            Objective = Solver.Objective();
-            SameDayDelivery = new List<List<List<Variable>>>();
-            CarryOver = new List<List<List<Variable>>>();
-            NonDelivery = new List<List<List<Variable>>>();
-            TotalOrderDeliveredByCargo = new List<Variable>();
+            _solver = Solver.CreateSolver("Dispatcher", "CBC_MIXED_INTEGER_PROGRAMMING");
+            _objective = _solver.Objective();
+            _deliveryAmount = new List<List<List<Variable>>>();
+            _excessAmount = new List<List<List<Variable>>>();
+            _totalOrderDeliveredByCargo = new List<Variable>();
         }
     }
 }
