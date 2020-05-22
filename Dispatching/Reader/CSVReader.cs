@@ -14,28 +14,83 @@ namespace Dispatching.Reader
 
         private readonly String TownFile;
 
+        private readonly String DepotFile;
+
         private Dictionary<String, List<Town>> TownByInventories;
 
         private Dictionary<String, List<Cargo>> CargosByInventories;
 
         private List<Depot> Depots;
 
-        public CSVReader(String cargoFile, String townFile)
+        private List<String> DepotNames;
+
+        private Dictionary<String, Double> DepotCapacity;
+
+        private Dictionary<String, Dictionary<String, Double>> CargoBasedDepotCapacity;
+
+        public CSVReader(String cargoFile, String townFile, String depotFile)
         {
             CargoFile = cargoFile;
             TownFile = townFile;
+            DepotFile = depotFile;
 
             TownByInventories = new Dictionary<String, List<Town>>();
             CargosByInventories = new Dictionary<String, List<Cargo>>();
 
+            CargoBasedDepotCapacity = new Dictionary<string, Dictionary<string, double>>();
+            DepotCapacity = new Dictionary<string, double>();
+            DepotNames = new List<string>();
             Depots = new List<Depot>();
         }
 
         public void Read()
         {
+            ReadDepots();
             ReadInventoryCargos();
             ReadInventoryTowns();
             ProcessData();
+        }
+
+        private void ReadDepots()
+        {
+            using (var sr = File.OpenText(DepotFile))
+            {
+                String s = sr.ReadLine();
+                var header = s.Split(',');
+                for (int i = 1; i < header.Length; i++)
+                    DepotNames.Add(header[i]);
+                
+                while ((s = sr.ReadLine()) != null)
+                {
+                    var line = s.Split(',');
+                    var cargoID = line[0];
+
+                    if(!CargoBasedDepotCapacity.ContainsKey(cargoID))
+                    {
+                        var depotCapacities = new Dictionary<String, Double>();
+                        for (int i = 0; i < DepotNames.Count; i++)
+                            depotCapacities.Add(DepotNames[i], Convert.ToDouble(line[i + 1], CultureInfo.InvariantCulture));
+                        CargoBasedDepotCapacity.Add(cargoID, depotCapacities);
+                    }
+                }
+            }
+
+            foreach(var cargo in CargoBasedDepotCapacity)
+            {
+                var depotCapacities = cargo.Value;
+                foreach(var depot in DepotNames)
+                {
+                    var capacity = depotCapacities[depot];
+                    if(!DepotCapacity.ContainsKey(depot))
+                    {
+                        DepotCapacity.Add(depot, capacity);
+                    }
+                    else
+                    {
+                        DepotCapacity[depot] += capacity;
+                    }
+                }
+            }
         }
 
         private void ReadInventoryCargos()
@@ -47,27 +102,44 @@ namespace Dispatching.Reader
                 {
                     var line = s.Split(',');
 
-                    var inventoryID = line[0];
-                    var cargoID = line[1];
-                    var capacity = Convert.ToDouble(line[2], CultureInfo.InvariantCulture);
+                    var cargoID = line[0];
+                    var globalMinRatio = Convert.ToDouble(line[1], CultureInfo.InvariantCulture);
+                    var minForTownGroupA = Convert.ToDouble(line[2], CultureInfo.InvariantCulture);
+                    var minForTownGroupB = Convert.ToDouble(line[3], CultureInfo.InvariantCulture);
+                    var minForTownGroupC = Convert.ToDouble(line[4], CultureInfo.InvariantCulture);
 
-                    var globalMinRatio = Convert.ToDouble(line[3], CultureInfo.InvariantCulture);
-                    var minForTownGroupA = Convert.ToDouble(line[4], CultureInfo.InvariantCulture);
-                    var minForTownGroupB = Convert.ToDouble(line[5], CultureInfo.InvariantCulture);
-                    var minForTownGroupC = Convert.ToDouble(line[6], CultureInfo.InvariantCulture);
+                    var globalMaxRatio = Convert.ToDouble(line[5], CultureInfo.InvariantCulture);
+                    var maxForTownGroupA = Convert.ToDouble(line[6], CultureInfo.InvariantCulture);
+                    var maxForTownGroupB = Convert.ToDouble(line[7], CultureInfo.InvariantCulture);
+                    var maxForTownGroupC = Convert.ToDouble(line[8], CultureInfo.InvariantCulture);
 
-                    var globalMaxRatio = Convert.ToDouble(line[7], CultureInfo.InvariantCulture);
-                    var maxForTownGroupA = Convert.ToDouble(line[8], CultureInfo.InvariantCulture);
-                    var maxForTownGroupB = Convert.ToDouble(line[9], CultureInfo.InvariantCulture);
-                    var maxForTownGroupC = Convert.ToDouble(line[10], CultureInfo.InvariantCulture);
-
-                    if (CargosByInventories.ContainsKey(inventoryID))
+                    var depotCapacities = CargoBasedDepotCapacity[cargoID];
+                    foreach(var depot in depotCapacities)
                     {
-                        var cargos = CargosByInventories[inventoryID];
-                        var cargo = new Cargo(cargoID, capacity, globalMinRatio, globalMaxRatio);
-                        if (!cargos.Contains(cargo))
+                        var inventoryID = depot.Key;
+                        var capacity = depot.Value;
+
+                        if (CargosByInventories.ContainsKey(inventoryID))
                         {
-                            cargos.Add(cargo);
+                            var cargos = CargosByInventories[inventoryID];
+                            var cargo = new Cargo(cargoID, capacity, globalMinRatio, globalMaxRatio);
+                            if (!cargos.Contains(cargo))
+                            {
+                                cargos.Add(cargo);
+
+                                cargo.AddMinimumRatioForTownGroup("A", minForTownGroupA);
+                                cargo.AddMinimumRatioForTownGroup("B", minForTownGroupB);
+                                cargo.AddMinimumRatioForTownGroup("C", minForTownGroupC);
+
+                                cargo.AddMaximumRatioForTownGroup("A", maxForTownGroupA);
+                                cargo.AddMaximumRatioForTownGroup("B", maxForTownGroupB);
+                                cargo.AddMaximumRatioForTownGroup("C", maxForTownGroupC);
+
+                            }
+                        }
+                        else
+                        {
+                            var cargo = new Cargo(cargoID, capacity, globalMinRatio, globalMaxRatio);
 
                             cargo.AddMinimumRatioForTownGroup("A", minForTownGroupA);
                             cargo.AddMinimumRatioForTownGroup("B", minForTownGroupB);
@@ -77,25 +149,12 @@ namespace Dispatching.Reader
                             cargo.AddMaximumRatioForTownGroup("B", maxForTownGroupB);
                             cargo.AddMaximumRatioForTownGroup("C", maxForTownGroupC);
 
+                            var cargos = new List<Cargo>();
+                            cargos.Add(cargo);
+
+                            CargosByInventories.Add(inventoryID, cargos);
                         }
                     }
-                    else
-                    {
-                        var cargo = new Cargo(cargoID, capacity, globalMinRatio, globalMaxRatio);
-
-                        cargo.AddMinimumRatioForTownGroup("A", minForTownGroupA);
-                        cargo.AddMinimumRatioForTownGroup("B", minForTownGroupB);
-                        cargo.AddMinimumRatioForTownGroup("C", minForTownGroupC);
-
-                        cargo.AddMaximumRatioForTownGroup("A", maxForTownGroupA);
-                        cargo.AddMaximumRatioForTownGroup("B", maxForTownGroupB);
-                        cargo.AddMaximumRatioForTownGroup("C", maxForTownGroupC);
-
-                        var cargos = new List<Cargo>();
-                        cargos.Add(cargo);
-
-                        CargosByInventories.Add(inventoryID, cargos);
-                    } 
                 }
             }
         }
@@ -109,7 +168,7 @@ namespace Dispatching.Reader
                 var length = headerLine.Count();
                 var listOfCargos = new List<String>();
 
-                for (int i = 5; i < length; i++)
+                for (int i = 4; i < length; i++)
                 {
                     listOfCargos.Add(headerLine[i]);
                 }
@@ -117,56 +176,62 @@ namespace Dispatching.Reader
                 while ((s = sr.ReadLine()) != null)
                 {
                     var line = s.Split(',');
-
-                    var inventoryID = line[0];
-                    var cityID = line[1];
-                    var townID = line[2];
-                    var townGroup = line[3];
-                    var demand = Convert.ToDouble(line[4], CultureInfo.InvariantCulture);
-
-                    var listOfNps = new List<Double>();
-                    for (int i = 5; i < length; i++)
-                    {
-                        listOfNps.Add(Convert.ToDouble(line[i], CultureInfo.InvariantCulture));
-                    }
                     
-                    var inventoryIsContained = TownByInventories.ContainsKey(inventoryID);
-
-                    townID = cityID + "~" + townID;
-
-                    if(inventoryIsContained)
+                    foreach(var invCap in DepotCapacity)
                     {
-                        var towns = TownByInventories[inventoryID];
-                        var town = new Town(townID, townGroup, demand);
+                        var inventoryID = invCap.Key;
+                        var invCapacity = invCap.Value;
 
-                        for (int i = 0; i < listOfCargos.Count; i++)
+                        var cityID = line[0];
+                        var townID = line[1];
+                        var townGroup = line[2];
+                        var demandPercentage = Convert.ToDouble(line[3], CultureInfo.InvariantCulture);
+                        var demand = Math.Round(invCapacity * demandPercentage / 100, 0);
+
+                        var listOfNps = new List<Double>();
+                        for (int i = 4; i < length; i++)
                         {
-                            var cargoID = listOfCargos[i];
-                            var nps = listOfNps[i];
-
-                            var cargo = CargosByInventories[inventoryID].Find(x => x.GetID() == cargoID);
-                            town.AddNPS(cargo, nps);
+                            listOfNps.Add(Convert.ToDouble(line[i], CultureInfo.InvariantCulture));
                         }
 
-                        towns.Add(town);
-                    }
-                    else
-                    {
-                        var town = new Town(townID, townGroup, demand);
+                        var inventoryIsContained = TownByInventories.ContainsKey(inventoryID);
 
-                        for (int i = 0; i < listOfCargos.Count; i++)
+                        townID = cityID + "~" + townID;
+
+                        if(inventoryIsContained)
                         {
-                            var cargoID = listOfCargos[i];
-                            var nps = listOfNps[i];
+                            var towns = TownByInventories[inventoryID];
+                            var town = new Town(townID, townGroup, demand);
 
-                            var cargo = CargosByInventories[inventoryID].Find(x => x.GetID() == cargoID);
+                            for (int i = 0; i < listOfCargos.Count; i++)
+                            {
+                                var cargoID = listOfCargos[i];
+                                var nps = listOfNps[i];
 
-                            town.AddNPS(cargo, nps);
+                                var cargo = CargosByInventories[inventoryID].Find(x => x.GetID() == cargoID);
+                                town.AddNPS(cargo, nps);
+                            }
+
+                            towns.Add(town);
                         }
+                        else
+                        {
+                            var town = new Town(townID, townGroup, demand);
 
-                        var towns = new List<Town>();
-                        towns.Add(town);
-                        TownByInventories.Add(inventoryID, towns);
+                            for (int i = 0; i < listOfCargos.Count; i++)
+                            {
+                                var cargoID = listOfCargos[i];
+                                var nps = listOfNps[i];
+
+                                var cargo = CargosByInventories[inventoryID].Find(x => x.GetID() == cargoID);
+
+                                town.AddNPS(cargo, nps);
+                            }
+
+                            var towns = new List<Town>();
+                            towns.Add(town);
+                            TownByInventories.Add(inventoryID, towns);
+                        }
                     }
                 }
             }

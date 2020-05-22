@@ -8,7 +8,7 @@ namespace Dispatching
     {
         static void Main(string[] args)
         {
-            var reader = new CSVReader("Input/Cargo_Task.csv", "Input/Town_Task.csv");
+            var reader = new CSVReader("Input/Test_Cargo.csv", "Input/Test_Town.csv", "Input/Test_Depot.csv");
             reader.Read();
 
             var cargos = reader.GetCargosByInventory();

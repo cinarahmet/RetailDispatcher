@@ -131,7 +131,6 @@ namespace Dispatching.Algorithm
         /// </summary>
         public void Run()
         {
-            //DataAnalysis();
             CreateDecisionVariables();
             CreateConstraints();
             CreateObjective();
@@ -154,6 +153,10 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void PrintResults()
         {
+            // Do not print if status is infeasible
+            if (_status == 2)
+                return;
+
             var ratios = new List<Double>();
             var cargoNames = new List<String>();
 
@@ -190,15 +193,13 @@ namespace Dispatching.Algorithm
                     {
                         var town = towns[k];
                         var cargo = cargos[i];
-
-                        var sameDayCost = town.GetSameDayDeliveryCost(cargo);
-                        var nonDeliveryCost = town.GetNonDeliveryCost(cargo);
+                        
                         var nps = town.GetNPS(cargo);
 
                         var sameDay = _deliveryAmount[d][i][k].SolutionValue();
                         var nonDelivery = _excessAmount[d][i][k].SolutionValue();
 
-                        _totalCost += (sameDay * (sameDayCost + nps)) + (nonDelivery * (nonDeliveryCost + nps));
+                        _totalCost += (sameDay * nps) + (nonDelivery * nps);
                     }
                 }
             }
@@ -289,8 +290,7 @@ namespace Dispatching.Algorithm
                     {
                         var name = $"x[{(i + 1)}][{(k + 1)}{(d + 1)}]";
                         var town = towns[k];
-                        var ub = town.GetSameDayCapacity(cargo);
-                        var x_dik = _solver.MakeIntVar(0, ub, name);
+                        var x_dik = _solver.MakeIntVar(0, double.MaxValue, name);
 
                         x_di.Add(x_dik);
                     }
@@ -385,12 +385,10 @@ namespace Dispatching.Algorithm
             _status = _solver.Solve();
 
             // Status: 0 --> Optimal; 1 --> Feasible; 2 --> Infeasible
-            //if(Status == 2)
-            //{
-            //    Console.WriteLine("Infeasibility is detected!");
-            //    Console.WriteLine("Minimum ratio limit constraints are relaxed!\n");
-            //    ReRun();
-            //}
+            if (_status == 2)
+            {
+                Console.WriteLine("Infeasibility is detected!");
+            }
         }
 
         /// <summary>
