@@ -15,7 +15,8 @@ namespace Dispatching
             var inventories = reader.GetTownsByInventory();
             var depots = reader.GetDepots();
 
-            var model = new Model(inventories, cargos, depots);
+            //var model = new Model(inventories, cargos, depots);
+            var model = new CplexSolver(inventories, cargos, depots);
             model.Run();
 
             var output = model.GetOutput();

@@ -9,4 +9,13 @@
     <PackageReference Include="Google.OrTools" Version="6.10.6025" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="ILOG.Concert">
+      <HintPath>lib\ILOG.Concert.dll</HintPath>
+    </Reference>
+    <Reference Include="ILOG.CPLEX">
+      <HintPath>lib\ILOG.CPLEX.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>
