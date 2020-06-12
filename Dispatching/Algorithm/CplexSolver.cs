@@ -169,11 +169,11 @@ namespace Dispatching.Algorithm
             Console.WriteLine("Total Order Quantity: {0}", _orderAmount);
             Console.WriteLine("Objective Value: {0}", Math.Round(_solver.GetObjValue(), 2));
             Console.WriteLine("Total Cost: {0} TL", Math.Round(_totalCost, 2));
-            Console.WriteLine("Solution Time: {0} seconds\n ", Math.Round(_solver.GetCplexTime() / 10000.0, 2));
+            Console.WriteLine("Solution Time: {0} seconds\n ", Math.Round(_solver.GetDetTime() / 10000.0, 2));
             for (int i = 0; i < _numOfCargos; i++)
             {
                 cargoNames.Add(Cargos[i].GetID());
-                var x_i = _solver.GetValue(_totalOrderDeliveredByCargo[i]);
+                var x_i = Math.Round(_solver.GetValue(_totalOrderDeliveredByCargo[i]), 0);
                 ratios.Add(x_i / _orderAmount);
                 Console.WriteLine("r[{0}] = {1}\t x[{0}] = {2}", Cargos[i].GetID(), Math.Round(ratios[i], 3), x_i);
             }
@@ -237,7 +237,7 @@ namespace Dispatching.Algorithm
 
                 for (int k = 0; k < _numOfTowns; k++)
                 {
-                    var town = Towns[k].GetID();
+                    var town = Towns[k];
                     var cargoRatios = new List<Double>();
                     var cargos = new List<String>();
 
@@ -246,12 +246,15 @@ namespace Dispatching.Algorithm
                         var sd = _solver.GetValue(_deliveryAmount[d][i][k]);
                         var nd = _solver.GetValue(_excessAmount[d][i][k]);
 
-                        var ratio = (sd + nd) / Towns[k].GetDemand();
+                        var denominator = town.GetDemand();
+                        if (denominator == 0)
+                            denominator = 1.0;
+                        var ratio = (sd + nd) / denominator;
                         //var ratio = (sd +  nd);
                         cargoRatios.Add(ratio);
                         cargos.Add(Cargos[i].GetID());
                     }
-                    var outputModel = new OutputModel(cargoRatios, Towns[k].GetID(), _depots[d].GetDepotID(), cargos);
+                    var outputModel = new OutputModel(cargoRatios, town.GetID(), _depots[d].GetDepotID(), cargos);
                     _output.Add(outputModel);
                 }
             }
@@ -292,7 +295,7 @@ namespace Dispatching.Algorithm
                     {
                         var name = $"x[{(i + 1)}][{(k + 1)}{(d + 1)}]";
                         var town = towns[k];
-                        var x_dik = _solver.NumVar(0, double.MaxValue, NumVarType.Int, name);
+                        var x_dik = _solver.NumVar(0, double.MaxValue, NumVarType.Float, name);
 
                         x_di.Add(x_dik);
                     }
@@ -320,7 +323,7 @@ namespace Dispatching.Algorithm
                         var name = $"z[{(i + 1)}][{(k + 1)}{(d + 1)}]";
                         var town = towns[k];
                         var ub = Int32.MaxValue;
-                        var z_dik = _solver.NumVar(0, ub, NumVarType.Int, name);
+                        var z_dik = _solver.NumVar(0, ub, NumVarType.Float, name);
 
                         z_di.Add(z_dik);
                     }
