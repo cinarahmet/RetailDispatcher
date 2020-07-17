@@ -126,6 +126,21 @@ namespace Dispatching.Algorithm
             }
 
             _output = new List<OutputModel>();
+
+            var maxNps = 0.0;
+            foreach(var it in _inventoryTowns)
+            {
+                var depot = it.Key;
+                var towns = it.Value;
+                var cargos = _inventoryCargos[depot];
+                foreach (var town in towns)
+                {
+                    foreach (var cargo in cargos)
+                        if (town.GetNPS(cargo) >= maxNps)
+                            maxNps = town.GetNPS(cargo);
+                }
+            }
+            ExceedCost = Math.Max(maxNps + 1, ExceedCost);
         }
 
         /// <summary>
@@ -404,7 +419,6 @@ namespace Dispatching.Algorithm
         /// </summary>
         private void OrdersAssignedToCargos()
         {
-            //var constraint = _solver.MakeConstraint(_orderAmount, _orderAmount);
             var constraint = _solver.LinearNumExpr();
 
             for (int i = 0; i < _numOfCargos; i++)
@@ -429,7 +443,6 @@ namespace Dispatching.Algorithm
                 for (int k = 0; k < _numOfTowns; k++)
                 {
                     var demand = towns[k].GetDemand();
-                    //var constraint = _solver.MakeConstraint(demand, demand);
 
                     var constraint = _solver.LinearNumExpr();
 
@@ -453,7 +466,6 @@ namespace Dispatching.Algorithm
         {
             for (int i = 0; i < _numOfCargos; i++)
             {
-                //var constraint = _solver.MakeConstraint(0, 0);
                 var constraint = _solver.LinearNumExpr();
                 for (int d = 0; d < _numOfDepots; d++)
                 {
@@ -479,7 +491,6 @@ namespace Dispatching.Algorithm
             for (int i = 0; i < _numOfCargos; i++)
             {
                 var ratio = cargos[i].GetMinimumRatio();
-                //var constraint = _solver.MakeConstraint(_orderAmount * ratio, double.PositiveInfinity);
                 var constraint = _solver.LinearNumExpr();
                 constraint.AddTerm(_totalOrderDeliveredByCargo[i], 1);
                 _solver.AddGe(constraint, _orderAmount * ratio);
@@ -492,7 +503,6 @@ namespace Dispatching.Algorithm
             for (int i = 0; i < _numOfCargos; i++)
             {
                 var ratio = cargos[i].GetMaximumRatio();
-                //var constraint = _solver.MakeConstraint(0, _orderAmount * ratio);
                 var constraint = _solver.LinearNumExpr();
                 constraint.AddTerm(_totalOrderDeliveredByCargo[i], 1);
                 _solver.AddLe(constraint, _orderAmount * ratio);
@@ -527,9 +537,7 @@ namespace Dispatching.Algorithm
                         demand += town.GetDemand();
                         ratio = town.GetCargoMinRatio(cargo);
                     }
-
-
-                    //var constraint = _solver.MakeConstraint(demand * ratio, double.PositiveInfinity);
+                    
                     var constraint = _solver.LinearNumExpr();
                     for (int d = 0; d < _numOfDepots; d++)
                     {
@@ -568,9 +576,7 @@ namespace Dispatching.Algorithm
                         demand += town.GetDemand();
                         ratio = town.GetCargoMaxRatio(cargo);
                     }
-
-
-                    //var constraint = _solver.MakeConstraint(0, demand * ratio);
+                    
                     var constraint = _solver.LinearNumExpr();
                     for (int d = 0; d < _numOfDepots; d++)
                     {
@@ -595,7 +601,6 @@ namespace Dispatching.Algorithm
                     var cargo = cargos[i];
 
                     var capacity = cargo.GetCapacity();
-                    //var constraint = _solver.MakeConstraint(0, capacity);
                     var constraint = _solver.LinearNumExpr();
 
                     for (int k = 0; k < _numOfTowns; k++)
@@ -607,7 +612,7 @@ namespace Dispatching.Algorithm
                 }
             }
         }
-
+        
         private void Clear()
         {
             _solver = new Cplex();
