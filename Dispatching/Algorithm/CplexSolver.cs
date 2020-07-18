@@ -390,11 +390,13 @@ namespace Dispatching.Algorithm
             OrdersAssignedToCargos();
             OrdersInTowns();
             OrderMatch();
-            MinimumRatioLimitForEachCargo();
             MaximumRatioLimitForEachCargo();
-            MinimumRatioLimitForEachCargoInTown();
+            MinimumRatioForTowns();
+            EachTownMustBeServedFromEachDepot();
             MaximumRatioLimitForEachCargoInTown();
             CargoCapacitiesByInventories();
+            //MinimumRatioLimitForEachCargo();
+            //MinimumRatioLimitForEachCargoInTown();
         }
 
         /// <summary>
@@ -424,7 +426,7 @@ namespace Dispatching.Algorithm
             for (int i = 0; i < _numOfCargos; i++)
                 constraint.AddTerm(_totalOrderDeliveredByCargo[i], 1);
 
-            _solver.AddEq(constraint, _orderAmount);
+            _solver.AddGe(constraint, _orderAmount);
         }
 
         /// <summary>
@@ -452,7 +454,7 @@ namespace Dispatching.Algorithm
                         constraint.AddTerm(_excessAmount[d][i][k], 1);
                     }
 
-                    _solver.AddEq(constraint, demand);
+                    _solver.AddGe(constraint, demand);
                 }
             }
         }
@@ -550,6 +552,71 @@ namespace Dispatching.Algorithm
         }
 
         /// <summary>
+        /// The minimum ratio should be modified if the cargo does not exist
+        /// in a certain depot!
+        /// </summary>
+        private void MinimumRatioForTowns()
+        {
+            for (int i = 0; i < _numOfCargos; i++)
+            {
+                for (int k = 0; k < _numOfTowns; k++)
+                {
+
+                    for (int d = 0; d < _numOfDepots; d++)
+                    {
+                        var depot = _depots[d];
+
+                        var towns = _inventoryTowns[depot.GetDepotID()];
+                        var cargos = _inventoryCargos[depot.GetDepotID()];
+
+                        var town = towns[k];
+                        var cargo = cargos[i];
+                        
+                        var demand = town.GetDemand();
+                        var ratio = town.GetCargoMinRatio(cargo);
+                        var capacity = cargo.GetCapacity();
+
+                        if (capacity == 0)
+                            ratio = 0.0;
+
+                        var constraint = _solver.LinearNumExpr();
+
+                        constraint.AddTerm(_deliveryAmount[d][i][k], 1);
+                        constraint.AddTerm(_excessAmount[d][i][k], 1);
+
+                        _solver.AddGe(constraint, demand * ratio);
+                    }
+                    
+                }
+            }
+        }
+
+        /// <summary>
+        /// For each town, there must a flow from some depot.
+        /// </summary>
+        private void EachTownMustBeServedFromEachDepot()
+        {
+            for (int k = 0; k < _numOfTowns; k++)
+            {
+                for (int d = 0; d < _numOfDepots; d++)
+                {
+                    var depot = _depots[d];
+                    var towns = _inventoryTowns[depot.GetDepotID()];
+                    var town = towns[k];
+                    var demand = town.GetDemand();
+
+                    var constraint = _solver.LinearNumExpr();
+                    for (int i = 0; i < _numOfCargos; i++)
+                    {
+                        constraint.AddTerm(_deliveryAmount[d][i][k], 1);
+                        constraint.AddTerm(_excessAmount[d][i][k], 1);
+                    }
+                    _solver.AddEq(constraint, demand);
+                }
+            }
+        }
+
+        /// <summary>
         /// The amount orders assigned to each cargo in a town must be less than
         /// a certain percentage
         /// sum(d) x[d][i][k] + y[d][i][k] + z[d][i][k] le Demand[d][k] * ratio[i] for all i € N; k € K
@@ -606,6 +673,8 @@ namespace Dispatching.Algorithm
                     for (int k = 0; k < _numOfTowns; k++)
                     {
                         constraint.AddTerm(_deliveryAmount[d][i][k], 1);
+                        if(capacity == 0)
+                            constraint.AddTerm(_excessAmount[d][i][k], 1);
                     }
 
                     _solver.AddLe(constraint, capacity);

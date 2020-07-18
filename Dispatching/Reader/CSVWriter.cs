@@ -16,19 +16,17 @@ namespace Dispatching.Reader
 
         private List<Cargo> _cargos;
 
-        private String InventoryName;
-
         private Int32 _numOfDepots;
 
         private Int32 _numOfCargos;
 
         private List<String> _depots = new List<String>();
 
-        public CSVWriter(List<OutputModel> data, List<Cargo> cargos, String fileName)
+        public CSVWriter(List<OutputModel> data, List<Cargo> cargos)
         {
             _data = data;
             _cargos = cargos;
-            InventoryName = fileName;
+            var fileName = $"AnalysisResults_{DateTime.Now.Year}{DateTime.Now.Month}{DateTime.Now.Day}{DateTime.Now.Hour}{DateTime.Now.Minute}{DateTime.Now.Second}"; ;
 
             DetermineDepots();
 
@@ -81,10 +79,16 @@ namespace Dispatching.Reader
 
         public void Write()
         {
+            WriteResultsForAnalysis();
+            WriteResultsForDeliveryPortal();
+        }
+
+        private void WriteResultsForAnalysis()
+        {
             var dataLength = _data.Count;
             var limit = dataLength / _numOfDepots;
 
-            for(int i=0; i<limit; i++)
+            for (int i = 0; i < limit; i++)
             {
                 var data = _data[i];
                 var town = data.TownID;
@@ -92,7 +96,7 @@ namespace Dispatching.Reader
                 var townId = town.Split('~')[1];
 
                 var result = $"{cityId},{townId}";
-                for (int j=0; j<_numOfDepots; j++)
+                for (int j = 0; j < _numOfDepots; j++)
                 {
                     data = _data[i + j * limit];
                     var cargos = data.Cargos;
@@ -107,6 +111,47 @@ namespace Dispatching.Reader
 
                 w.WriteLine(result);
                 w.Flush();
+            }
+        }
+
+        private void WriteResultsForDeliveryPortal()
+        {
+            var header = $"{"stID"},{"ftID"},{"cityId"},{"cityName"},{"districtId"},{"districtName"}," +
+                $"{"warehouseId"},{"warehouseName"},{"cargoProviderId"},{"cargoProviderName"},{"stLimit"},{"ftLimit"}";
+            
+            var fileName = $"DeliveryPortal_{DateTime.Now.Year}{DateTime.Now.Month}{DateTime.Now.Day}{DateTime.Now.Hour}{DateTime.Now.Minute}{DateTime.Now.Second}";
+            _filePath = @"Output\" + fileName + ".csv";
+            UTF8Encoding encoding = new UTF8Encoding();
+            w = new StreamWriter(File.Open(_filePath, FileMode.OpenOrCreate), Encoding.GetEncoding("UTF-8"));
+            w.WriteLine(header);
+            w.Flush();
+
+            var dataLength = _data.Count;
+            var limit = dataLength / _numOfDepots;
+
+            for (int i = 0; i < limit; i++)
+            {
+                var data = _data[i];
+                var town = data.TownID;
+                var cityName = town.Split('~')[0];
+                var districtName = town.Split('~')[1];
+
+                for (int j = 0; j < _numOfDepots; j++)
+                {
+                    data = _data[i + j * limit];
+                    var cargos = data.Cargos;
+                    var ratios = data.Ratios;
+
+                    foreach (var cargo in _cargos)
+                    {
+                        var id = cargo.GetID();
+                        var result = $"{""},{""},{""},{cityName},{""},{districtName}";
+                        result = $"{result},{""},{_depots[j]}";
+                        result = $"{result},{""},{id},{ratios[cargos.IndexOf(id)]},{ratios[cargos.IndexOf(id)]}";
+                        w.WriteLine(result);
+                        w.Flush();
+                    }
+                }
             }
         }
     }

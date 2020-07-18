@@ -188,6 +188,9 @@ namespace Dispatching.Reader
                         var demandPercentage = Convert.ToDouble(line[3], CultureInfo.InvariantCulture);
                         var demand = Math.Round(invCapacity * demandPercentage / 100, 0);
 
+                        if (demand == 0)
+                            demand = 1.0;
+
                         var listOfNps = new List<Double>();
                         for (int i = 4; i < length; i++)
                         {
